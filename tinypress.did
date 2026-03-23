@@ -1,0 +1,83 @@
+// TinyPress v1 — Stage 1 interface definition (profiles + diagnostic)
+// Authoritative source: TinyPress ADR + Interface Spec v1.1
+// Stage 2 (posts) and Stage 3 (comments) operations will be added
+// at their respective compatibility checkpoints.
+//
+// NOTE: TinyPressError includes PostNotFound here even though no post
+// operations exist in Stage 1. The error type is defined once and used
+// across all stages — adding it later would be a schema change.
+
+type Post = record {
+    post_id           : nat64;
+    author_profile_id : nat64;
+    title             : text;
+    body              : text;
+    created_at        : nat64;
+    creator_handle    : text;
+};
+
+type TinyPressError = variant {
+    NotFound;                  // record does not exist
+    Forbidden;                 // record exists; caller not authorised to mutate
+    AlreadyExists;             // duplicate principal or handle on create_profile
+    ProfileNotFound;           // caller has no registered profile
+    PostNotFound;              // referenced post_id does not exist (Stage 2+)
+    InvalidInput   : text;     // malformed or empty required field
+    InternalError  : text;     // storage or serialisation failure; op did not complete
+};
+
+type Profile = record {
+    profile_id   : nat64;
+    owner        : principal;  // renamed from 'principal' — reserved keyword in Candid
+    handle       : text;
+    display_name : text;
+    bio          : text;
+    created_at   : nat64;
+};
+
+type TinypressStatus = record {
+    schema_version : nat32;
+    profile_count  : nat64;
+    post_count     : nat64;    // Stage 2 live
+    comment_count  : nat64;    // always 0 in Stage 1
+    status         : text;     // "ok" in v1
+};
+
+service : {
+    // --- Profile operations ---
+
+    // create_profile: handle and display_name must be non-empty/non-whitespace.
+    // bio may be empty. Returns new profile_id on success.
+    create_profile : (text, text, text) -> (variant { Ok : nat64; Err : TinyPressError });
+
+    // get_profile: NotFound if profile_id does not exist.
+    get_profile : (nat64) -> (variant { Ok : Profile; Err : TinyPressError }) query;
+
+    // update_profile: updates display_name and bio only.
+    // handle is immutable after creation. Caller must have a registered profile.
+    update_profile : (text, text) -> (variant { Ok; Err : TinyPressError });
+
+    // delete_profile: NotFound if absent; Forbidden if caller != owner.
+    // Succeeds even with authored posts/comments — orphaning is intentional.
+    // Idempotent after first success: second call returns NotFound.
+    delete_profile : (nat64) -> (variant { Ok; Err : TinyPressError });
+
+    // --- Post operations ---
+    // create_post: title must be non-empty/non-whitespace. body may be empty.
+    // author_profile_id derived from caller — not accepted as input.
+    // creator_handle copied from profile.handle at creation; not kept in sync.
+    create_post : (text, text) -> (variant { Ok : nat64; Err : TinyPressError });
+    // get_post: NotFound if post_id does not exist.
+    // Returns post even if author profile has since been deleted.
+    get_post : (nat64) -> (variant { Ok : Post; Err : TinyPressError }) query;
+    // get_posts_by_author: returns all posts for profile_id.
+    // Returns empty vec if no posts exist or profile has been deleted. Never errors.
+    get_posts_by_author : (nat64) -> (vec Post) query;
+    // delete_post: NotFound if absent; ProfileNotFound if caller has no profile;
+    // Forbidden if caller profile != post author. Idempotent after first success.
+    delete_post : (nat64) -> (variant { Ok; Err : TinyPressError });
+
+    // --- Diagnostic ---
+
+    tinypress_status : () -> (TinypressStatus) query;
+};

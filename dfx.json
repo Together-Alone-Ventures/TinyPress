@@ -1,0 +1,17 @@
+{
+  "dfx": "0.30.2",
+  "canisters": {
+    "tinypress": {
+      "type": "rust",
+      "candid": "src/tinypress/tinypress.did",
+      "package": "tinypress"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "version": 1
+}
