@@ -3,7 +3,7 @@
   "canisters": {
     "tinypress": {
       "type": "rust",
-      "candid": "src/tinypress/tinypress.did",
+      "candid": "tinypress.did",
       "package": "tinypress"
     }
   },

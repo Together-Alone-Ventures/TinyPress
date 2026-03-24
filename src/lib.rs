@@ -1,6 +1,6 @@
-// TinyPress v1 — Stage 1 implementation: profiles map
+// TinyPress v1 implementation
 //
-// Together Alone Ventures · MKTd03 Project · March 2026
+// Together Alone Ventures · March 2026
 // Spec: TinyPress ADR + Interface Spec v1.1
 //
 // HARD CONSTRAINTS (from ADR):
@@ -8,14 +8,17 @@
 //   - handle is immutable after creation (spec §4.2)
 //
 // Memory layout (MemoryManager IDs — do not change without migration):
-//   MemoryId(0) — profiles:         StableBTreeMap<u64, Profile>
-//   MemoryId(1) — principal_index:  StableBTreeMap<StorablePrincipal, u64>
-//   MemoryId(2) — profile_counter:  StableCell<u64>
-//   MemoryId(3) — handle_index:     StableBTreeMap<String, u64>  (handle -> profile_id)
-//   MemoryId(4) — posts:            StableBTreeMap<u64, Post>
-//   MemoryId(5) — post_counter:     StableCell<u64>
-//   MemoryId(6) — posts_by_author:  StableBTreeMap<PostAuthorKey, ()>
-//   MemoryId(7..9) — reserved for Stage 3 (comments)
+//   MemoryId(0) — profiles:            StableBTreeMap<u64, Profile>
+//   MemoryId(1) — principal_index:     StableBTreeMap<StorablePrincipal, u64>
+//   MemoryId(2) — profile_counter:     StableCell<u64>
+//   MemoryId(3) — handle_index:        StableBTreeMap<String, u64>  (handle -> profile_id)
+//   MemoryId(4) — posts:               StableBTreeMap<u64, Post>
+//   MemoryId(5) — post_counter:        StableCell<u64>
+//   MemoryId(6) — posts_by_author:     StableBTreeMap<PostAuthorKey, ()>
+//   MemoryId(7) — comments:            StableBTreeMap<u64, StoredComment>
+//   MemoryId(8) — comment_counter:     StableCell<u64>
+//   MemoryId(9) — comments_by_post:    StableBTreeMap<CommentPostKey, ()>
+//   MemoryId(10) — comments_by_author: StableBTreeMap<CommentAuthorKey, ()>
 //
 // ic-cdk 0.19.0 notes:
 //   - ic_cdk::api::caller() is deprecated but still present; suppressed below
@@ -103,6 +106,33 @@ thread_local! {
         RefCell::new(StableBTreeMap::init(
             MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(6))),
         ));
+
+    // MemoryId(7): comments map — primary record store
+    static COMMENTS: RefCell<StableBTreeMap<u64, StoredComment, Memory>> = RefCell::new(
+        StableBTreeMap::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(7))),
+        )
+    );
+
+    // MemoryId(8): monotonic comment ID counter
+    static COMMENT_COUNTER: RefCell<StableCell<u64, Memory>> = RefCell::new(
+        StableCell::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(8))),
+            0u64,
+        )
+    );
+
+    // MemoryId(9): secondary index post_id + comment_id -> ()
+    static COMMENTS_BY_POST: RefCell<StableBTreeMap<CommentPostKey, (), Memory>> =
+        RefCell::new(StableBTreeMap::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(9))),
+        ));
+
+    // MemoryId(10): secondary index author_profile_id + comment_id -> ()
+    static COMMENTS_BY_AUTHOR: RefCell<StableBTreeMap<CommentAuthorKey, (), Memory>> =
+        RefCell::new(StableBTreeMap::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(10))),
+        ));
 }
 
 // ---------------------------------------------------------------------------
@@ -135,16 +165,16 @@ impl Storable for StorablePrincipal {
 // Data types
 // ---------------------------------------------------------------------------
 
-/// Profile — the PII root record. Hard-deleted on erasure request.
+/// Profile record.
 /// Field named `owner` not `principal` — `principal` is a reserved Candid keyword.
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct Profile {
     pub profile_id:   u64,
-    pub owner:        Principal, // ICP caller identity; personal data (ADR-10)
-    pub handle:       String,    // unique; immutable after creation; personal data
-    pub display_name: String,    // personal data
-    pub bio:          String,    // personal data; may be empty
-    pub created_at:   u64,       // nanoseconds since epoch
+    pub owner:        Principal,
+    pub handle:       String,
+    pub display_name: String,
+    pub bio:          String,
+    pub created_at:   u64,
 }
 
 impl Storable for Profile {
@@ -187,6 +217,94 @@ impl Storable for Post {
     }
 
     const BOUND: Bound = Bound::Unbounded;
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct StoredComment {
+    pub comment_id:          u64,
+    pub post_id:             u64,
+    pub author_profile_id:   u64,
+    pub content:             String,
+    pub created_at:          u64,
+    pub reply_to_comment_id: Option<u64>,
+}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+struct StoredCommentCodec {
+    comment_id:          u64,
+    post_id:             u64,
+    author_profile_id:   u64,
+    content:             String,
+    created_at:          u64,
+    reply_to_comment_id: Option<u64>,
+}
+
+impl Storable for StoredComment {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
+        Cow::Owned(
+            candid::encode_one(StoredCommentCodec::from(self.clone()))
+                .expect("Comment serialisation failed"),
+        )
+    }
+
+    fn into_bytes(self) -> Vec<u8> {
+        candid::encode_one(StoredCommentCodec::from(self)).expect("Comment serialisation failed")
+    }
+
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        let comment: StoredCommentCodec =
+            candid::decode_one(bytes.as_ref()).expect("Comment deserialisation failed");
+        comment.into()
+    }
+
+    const BOUND: Bound = Bound::Unbounded;
+}
+
+#[derive(CandidType, Deserialize, Clone, Debug)]
+pub struct Comment {
+    pub comment_id:        u64,
+    pub post_id:           u64,
+    pub author_profile_id: u64,
+    pub content:           String,
+    pub created_at:        u64,
+}
+
+impl From<StoredComment> for Comment {
+    fn from(comment: StoredComment) -> Self {
+        Self {
+            comment_id: comment.comment_id,
+            post_id: comment.post_id,
+            author_profile_id: comment.author_profile_id,
+            content: comment.content,
+            created_at: comment.created_at,
+        }
+    }
+}
+
+impl From<StoredComment> for StoredCommentCodec {
+    fn from(comment: StoredComment) -> Self {
+        Self {
+            comment_id: comment.comment_id,
+            post_id: comment.post_id,
+            author_profile_id: comment.author_profile_id,
+            content: comment.content,
+            created_at: comment.created_at,
+            reply_to_comment_id: comment.reply_to_comment_id,
+        }
+    }
+}
+
+impl From<StoredCommentCodec> for StoredComment {
+    fn from(comment: StoredCommentCodec) -> Self {
+        Self {
+            comment_id: comment.comment_id,
+            post_id: comment.post_id,
+            author_profile_id: comment.author_profile_id,
+            content: comment.content,
+            created_at: comment.created_at,
+            reply_to_comment_id: comment.reply_to_comment_id,
+        }
+    }
 }
 
 #[derive(CandidType, Deserialize, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -235,14 +353,106 @@ impl Storable for PostAuthorKey {
     };
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct CommentPostKey {
+    pub post_id:    u64,
+    pub comment_id: u64,
+}
+
+impl Storable for CommentPostKey {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
+        let mut bytes = Vec::with_capacity(16);
+        bytes.extend_from_slice(&self.post_id.to_be_bytes());
+        bytes.extend_from_slice(&self.comment_id.to_be_bytes());
+        Cow::Owned(bytes)
+    }
+
+    fn into_bytes(self) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(16);
+        bytes.extend_from_slice(&self.post_id.to_be_bytes());
+        bytes.extend_from_slice(&self.comment_id.to_be_bytes());
+        bytes
+    }
+
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        let bytes = bytes.as_ref();
+        let post_id = u64::from_be_bytes(
+            bytes[0..8]
+                .try_into()
+                .expect("CommentPostKey post_id bytes must be 8 bytes"),
+        );
+        let comment_id = u64::from_be_bytes(
+            bytes[8..16]
+                .try_into()
+                .expect("CommentPostKey comment_id bytes must be 8 bytes"),
+        );
+
+        Self {
+            post_id,
+            comment_id,
+        }
+    }
+
+    const BOUND: Bound = Bound::Bounded {
+        max_size: 16,
+        is_fixed_size: true,
+    };
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct CommentAuthorKey {
+    pub author_profile_id: u64,
+    pub comment_id:        u64,
+}
+
+impl Storable for CommentAuthorKey {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
+        let mut bytes = Vec::with_capacity(16);
+        bytes.extend_from_slice(&self.author_profile_id.to_be_bytes());
+        bytes.extend_from_slice(&self.comment_id.to_be_bytes());
+        Cow::Owned(bytes)
+    }
+
+    fn into_bytes(self) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(16);
+        bytes.extend_from_slice(&self.author_profile_id.to_be_bytes());
+        bytes.extend_from_slice(&self.comment_id.to_be_bytes());
+        bytes
+    }
+
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        let bytes = bytes.as_ref();
+        let author_profile_id = u64::from_be_bytes(
+            bytes[0..8]
+                .try_into()
+                .expect("CommentAuthorKey author_profile_id bytes must be 8 bytes"),
+        );
+        let comment_id = u64::from_be_bytes(
+            bytes[8..16]
+                .try_into()
+                .expect("CommentAuthorKey comment_id bytes must be 8 bytes"),
+        );
+
+        Self {
+            author_profile_id,
+            comment_id,
+        }
+    }
+
+    const BOUND: Bound = Bound::Bounded {
+        max_size: 16,
+        is_fixed_size: true,
+    };
+}
+
 /// Diagnostic status (ADR-09). Aggregate counts only — no per-record data.
 #[derive(CandidType, Deserialize, Clone, Debug)]
 pub struct TinypressStatus {
     pub schema_version: u32,
     pub profile_count:  u64,
-    pub post_count:     u64,    // Stage 2
-    pub comment_count:  u64,    // Stage 3
-    pub status:         String, // "ok" in v1
+    pub post_count:     u64,
+    pub comment_count:  u64,
+    pub status:         String,
 }
 
 /// Error type (spec §4.1). All variants explicit — no silent failures (Principle 5).
@@ -253,7 +463,7 @@ pub enum TinyPressError {
     Forbidden,
     AlreadyExists,
     ProfileNotFound,
-    PostNotFound,           // Stage 2+
+    PostNotFound,
     InvalidInput(String),
     InternalError(String),
 }
@@ -270,7 +480,6 @@ fn next_profile_id() -> u64 {
     PROFILE_COUNTER.with(|c| {
         let mut cell = c.borrow_mut();
         let next = cell.get() + 1;
-        // StableCell::set() returns old value in 0.7.2 — not a Result
         let _ = cell.set(next);
         next
     })
@@ -285,12 +494,19 @@ fn next_post_id() -> u64 {
     })
 }
 
+fn next_comment_id() -> u64 {
+    COMMENT_COUNTER.with(|c| {
+        let mut cell = c.borrow_mut();
+        let next = cell.get() + 1;
+        let _ = cell.set(next);
+        next
+    })
+}
+
 // ---------------------------------------------------------------------------
 // Stage 1 — Profile operations (spec §4.2)
 // ---------------------------------------------------------------------------
 
-/// create_profile — registers a new profile for the calling principal.
-/// Not idempotent: duplicate principal or handle returns AlreadyExists (ADR-08).
 #[ic_cdk::update]
 fn create_profile(
     handle: String,
@@ -310,12 +526,10 @@ fn create_profile(
         ));
     }
 
-    // One profile per principal
     if PRINCIPAL_INDEX.with(|idx| idx.borrow().contains_key(&StorablePrincipal(caller))) {
         return Err(TinyPressError::AlreadyExists);
     }
 
-    // Handle uniqueness — O(1) via handle_index
     if HANDLE_INDEX.with(|h| h.borrow().contains_key(&handle)) {
         return Err(TinyPressError::AlreadyExists);
     }
@@ -338,7 +552,6 @@ fn create_profile(
     Ok(profile_id)
 }
 
-/// get_profile — NotFound if profile_id does not exist.
 #[ic_cdk::query]
 fn get_profile(profile_id: u64) -> Result<Profile, TinyPressError> {
     PROFILES
@@ -346,9 +559,6 @@ fn get_profile(profile_id: u64) -> Result<Profile, TinyPressError> {
         .ok_or(TinyPressError::NotFound)
 }
 
-/// update_profile — updates display_name and bio only.
-/// handle is immutable. creator_handle on existing posts NOT updated (ADR-04).
-/// Idempotent (ADR-08).
 #[ic_cdk::update]
 fn update_profile(display_name: String, bio: String) -> Result<(), TinyPressError> {
     let caller = caller();
@@ -365,16 +575,12 @@ fn update_profile(display_name: String, bio: String) -> Result<(), TinyPressErro
 
     profile.display_name = display_name;
     profile.bio = bio;
-    // handle unchanged — immutable after creation (spec §4.2)
 
     PROFILES.with(|p| p.borrow_mut().insert(profile_id, profile));
 
     Ok(())
 }
 
-/// delete_profile — hard-deletes profile. Posts/comments NOT cascaded (ADR-05).
-/// NotFound if absent; Forbidden if caller != owner (distinct — spec §4.1).
-/// Idempotent after first success (ADR-08).
 #[ic_cdk::update]
 fn delete_profile(profile_id: u64) -> Result<(), TinyPressError> {
     let caller = caller();
@@ -509,17 +715,138 @@ fn delete_post(post_id: u64) -> Result<(), TinyPressError> {
 }
 
 // ---------------------------------------------------------------------------
+// Stage 3 — Comment operations (spec §4.4).
+// ---------------------------------------------------------------------------
+
+#[ic_cdk::update]
+fn create_comment(post_id: u64, content: String) -> Result<u64, TinyPressError> {
+    if !is_valid_required_text(&content) {
+        return Err(TinyPressError::InvalidInput(
+            "content must be non-empty and non-whitespace-only".to_string(),
+        ));
+    }
+
+    let caller = caller();
+
+    let author_profile_id = PRINCIPAL_INDEX
+        .with(|idx| idx.borrow().get(&StorablePrincipal(caller)))
+        .ok_or(TinyPressError::ProfileNotFound)?;
+
+    if !POSTS.with(|p| p.borrow().contains_key(&post_id)) {
+        return Err(TinyPressError::PostNotFound);
+    }
+
+    let comment_id = next_comment_id();
+    let comment = StoredComment {
+        comment_id,
+        post_id,
+        author_profile_id,
+        content,
+        created_at: time(),
+        reply_to_comment_id: None,
+    };
+
+    COMMENTS.with(|c| c.borrow_mut().insert(comment_id, comment));
+    COMMENTS_BY_POST.with(|index| {
+        index
+            .borrow_mut()
+            .insert(CommentPostKey { post_id, comment_id }, ())
+    });
+    COMMENTS_BY_AUTHOR.with(|index| {
+        index.borrow_mut().insert(
+            CommentAuthorKey {
+                author_profile_id,
+                comment_id,
+            },
+            (),
+        )
+    });
+
+    Ok(comment_id)
+}
+
+#[ic_cdk::query]
+fn get_comments_by_post(post_id: u64) -> Result<Vec<Comment>, TinyPressError> {
+    if !POSTS.with(|p| p.borrow().contains_key(&post_id)) {
+        return Err(TinyPressError::PostNotFound);
+    }
+
+    let start = CommentPostKey {
+        post_id,
+        comment_id: 0,
+    };
+    let end = CommentPostKey {
+        post_id,
+        comment_id: u64::MAX,
+    };
+
+    let comments = COMMENTS_BY_POST.with(|index| {
+        index
+            .borrow()
+            .range(start..=end)
+            .map(|entry| {
+                let key = entry.key().clone();
+                COMMENTS.with(|comments| {
+                    comments.borrow().get(&key.comment_id).unwrap_or_else(|| {
+                        panic!(
+                            "Invariant violation: COMMENTS_BY_POST references missing COMMENTS entry for comment_id {} and post_id {}",
+                            key.comment_id,
+                            key.post_id
+                        )
+                    })
+                })
+            })
+            .map(Comment::from)
+            .collect()
+    });
+
+    Ok(comments)
+}
+
+#[ic_cdk::update]
+fn delete_comment(comment_id: u64) -> Result<(), TinyPressError> {
+    let comment = COMMENTS
+        .with(|c| c.borrow().get(&comment_id))
+        .ok_or(TinyPressError::NotFound)?;
+
+    let caller = caller();
+
+    let caller_profile_id = PRINCIPAL_INDEX
+        .with(|idx| idx.borrow().get(&StorablePrincipal(caller)))
+        .ok_or(TinyPressError::ProfileNotFound)?;
+
+    if caller_profile_id != comment.author_profile_id {
+        return Err(TinyPressError::Forbidden);
+    }
+
+    COMMENTS.with(|c| c.borrow_mut().remove(&comment_id));
+    COMMENTS_BY_POST.with(|index| {
+        index.borrow_mut().remove(&CommentPostKey {
+            post_id: comment.post_id,
+            comment_id,
+        })
+    });
+    COMMENTS_BY_AUTHOR.with(|index| {
+        index.borrow_mut().remove(&CommentAuthorKey {
+            author_profile_id: comment.author_profile_id,
+            comment_id,
+        })
+    });
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // Diagnostic query (ADR-09)
 // ---------------------------------------------------------------------------
 
-/// tinypress_status — aggregate counts + schema version. No per-record data.
 #[ic_cdk::query]
 fn tinypress_status() -> TinypressStatus {
     TinypressStatus {
         schema_version: TINYPRESS_SCHEMA_VERSION,
         profile_count:  PROFILES.with(|p| p.borrow().len()),
         post_count:     POSTS.with(|p| p.borrow().len()),
-        comment_count:  0, // Stage 3
+        comment_count:  COMMENTS.with(|c| c.borrow().len()),
         status:         "ok".to_string(),
     }
 }
