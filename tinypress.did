@@ -58,6 +58,7 @@ service : {
 
     create_comment : (nat64, text) -> (variant { Ok : nat64; Err : TinyPressError });
     get_comments_by_post : (nat64) -> (variant { Ok : vec Comment; Err : TinyPressError }) query;
+    get_comments_by_author : (nat64) -> (vec Comment) query;
     delete_comment : (nat64) -> (variant { Ok; Err : TinyPressError });
 
     tinypress_status : () -> (TinypressStatus) query;

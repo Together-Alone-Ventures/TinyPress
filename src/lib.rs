@@ -803,6 +803,38 @@ fn get_comments_by_post(post_id: u64) -> Result<Vec<Comment>, TinyPressError> {
     Ok(comments)
 }
 
+#[ic_cdk::query]
+fn get_comments_by_author(profile_id: u64) -> Vec<Comment> {
+    let start = CommentAuthorKey {
+        author_profile_id: profile_id,
+        comment_id: 0,
+    };
+    let end = CommentAuthorKey {
+        author_profile_id: profile_id,
+        comment_id: u64::MAX,
+    };
+
+    COMMENTS_BY_AUTHOR.with(|index| {
+        index
+            .borrow()
+            .range(start..=end)
+            .map(|entry| {
+                let key = entry.key().clone();
+                COMMENTS.with(|comments| {
+                    comments.borrow().get(&key.comment_id).unwrap_or_else(|| {
+                        panic!(
+                            "Invariant violation: COMMENTS_BY_AUTHOR references missing COMMENTS entry for comment_id {} and author_profile_id {}",
+                            key.comment_id,
+                            key.author_profile_id
+                        )
+                    })
+                })
+            })
+            .map(Comment::from)
+            .collect()
+    })
+}
+
 #[ic_cdk::update]
 fn delete_comment(comment_id: u64) -> Result<(), TinyPressError> {
     let comment = COMMENTS
