@@ -38,3 +38,49 @@ Irreversible actions taken:
 Do not revisit:
   - TinyPress v1 canister feature set — complete, closed.
   - Stage ordering — frontend (Stage 5) precedes MKTd03 integration.
+
+## 2026-03-25 — SESSION LESSON: Assumption surfacing at stage transitions
+
+What happened:
+  - Stage 4 closed cleanly on the coding task, but project-shape assumptions
+    (frontend, mainnet, demo posture) were not surfaced until the human raised
+    them. C incorrectly inferred "no mainnet" and "no frontend needed" from
+    "toy app," and overclaimed doc knowledge on what Stage 5 was.
+
+The lesson:
+  - Before any new stage begins, run an explicit assumption surfacing check
+    covering: target audience and outcome posture; deployment target (local /
+    mainnet); whether a frontend/UI is in scope; what "done" means for this
+    phase; which artifacts are required at close; what is intentionally
+    deferred; what assumptions are being made by analogy rather than by
+    explicit instruction. "Toy app" does not mean "canister-only forever" or
+    "not demo-worthy." Absence of a written rule is not the same as the
+    opposite rule being settled.
+  - When a phase ends, do not move straight into "what next." First run the
+    assumption surfacing pass for the next phase, especially around audience,
+    deployment posture, UI expectations, and demo intent.
+  - "Toy dApp" at TAV means: deployable on mainnet, with a lightweight
+    frontend, suitable for third-party demos. This is now a standing TAV
+    principle. Never override it by analogy or inference.
+
+Category: process
+
+Apply next time:
+  - At the start of every new project or phase, before any implementation
+    prompt is drafted, ask explicitly:
+      1. Outcome posture: internal test, partner review, public demo, beta,
+         production?
+      2. Deployment target: local only, mainnet-capable, or both?
+      3. UI/frontend: in scope for this phase or deliberately deferred?
+      4. Audience: developer, reviewer, investor, regulator, partner, end user?
+      5. "Done" semantics: code merged / deployed / tested / reviewed /
+         demoable / documented — which of these apply?
+      6. Artifact requirements: which artifacts must exist at phase close?
+      7. Demo story: is there a "money shot" this phase must support?
+      8. Workflow constraints: CLI-first, GitHub-web-editor-first, mixed?
+      9. Novelty check: what would a model wrongly assume by analogy to the
+         previous project?
+     10. Silence audit: what is the human likely assuming but has not yet
+         written down?
+  - Playbook formalisation of this checklist is a hard gate (Stage 6) before
+    MKTd03 integration begins.
