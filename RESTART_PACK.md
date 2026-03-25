@@ -1,8 +1,11 @@
 DATE: 2026-03-25
 
-CURRENT GOAL: TinyPress Stage 5 — lightweight frontend for mainnet demo deployment.
-TinyPress canister (v1) is feature-complete. Stage 5 delivers a simple React frontend
-sufficient for third-party demonstrations of the zombie-delete problem MKTd03 solves.
+CURRENT GOAL: TinyPress Stage 5 — lightweight frontend for mainnet demo
+deployment. TinyPress canister (v1) is feature-complete. Stage 5 delivers
+a simple frontend sufficient for third-party demonstrations of the
+zombie-delete problem MKTd03 solves. Stage 6 (playbook + TAV Design
+Principles update) follows Stage 5 and is a hard gate before MKTd03
+integration begins.
 
 GIT STATE
     MKTd03:                    main @ f55d63615ed6966882484dfaa1c012083bbddc2a
@@ -56,14 +59,17 @@ KNOWN GOTCHAS FOR NEXT SESSION
   - TinyPress memory IDs 0..10 all in use — any new stable structures start at MemoryId(11)
 
 ACCEPTANCE GATES (Stage 5)
-  [ ] Frontend stack decided (React + Vite assumed; confirm or adjust)
-  [ ] Frontend ADR drafted and reviewed before any code written
+  [ ] Assumption surfacing check completed before any implementation prompt
+  [ ] Frontend stack decided and ADR drafted before any code written
   [ ] Profile create / view / delete working in UI
   [ ] Post create / view working in UI
   [ ] Comment create / view working in UI
-  [ ] Orphaned records state visible after profile deletion (the demo money shot)
+  [ ] Orphaned records state visible after profile deletion (demo money shot)
   [ ] Deployable to mainnet
   [ ] Suitable for third-party demo without CLI knowledge
+  [ ] RESTART_PACK and MILESTONE_LOG updated in GitHub before session closes
+  [ ] Stage 6 (playbook update) explicitly queued — do not proceed to MKTd03
+      integration until Stage 6 is complete
 
 SAFE RESTART PROMPT
   Fetch https://raw.githubusercontent.com/Together-Alone-Ventures/TinyPress/main/RESTART_PACK.md
