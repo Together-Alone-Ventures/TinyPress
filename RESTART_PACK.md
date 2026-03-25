@@ -1,19 +1,21 @@
 DATE: 2026-03-25
 
-CURRENT GOAL: TinyPress Stage 5 — lightweight frontend for mainnet demo
-deployment. TinyPress canister (v1) is feature-complete. Stage 5 delivers
-a simple frontend sufficient for third-party demonstrations of the
-zombie-delete problem MKTd03 solves. Stage 6 (playbook + TAV Design
-Principles update) follows Stage 5 and is a hard gate before MKTd03
+CURRENT GOAL: TinyPress Stage 5 pass 2 — wire the frontend to real
+TinyPress flows. Stage 5 pass 1 is complete: the React + Vite frontend
+scaffold exists, local deploy succeeds, local Internet Identity support
+works, and sign-in works locally. No real TinyPress backend canister
+calls have been added yet. Stage 6 (playbook + TAV Design Principles
+update) still follows Stage 5 and remains a hard gate before MKTd03
 integration begins.
 
 GIT STATE
     MKTd03:                    main @ f55d63615ed6966882484dfaa1c012083bbddc2a
-    TinyPress:                 main @ f93a60c (full SHA: run git rev-parse HEAD to confirm)
+    TinyPress:                 main @ 4381f65c2c8e598f8edf434f99107558c7dc49ef
     TAV-Engineering-Standards: main @ d6c7d17 (full SHA not yet refreshed)
 
 FILES OPEN (edited, not yet committed)
-  None
+  - RESTART_PACK.md
+  - MILESTONE_LOG.md
 
 DECISIONS MADE THIS SESSION
   - Stage 4 complete: get_comments_by_author exposed as public query, DID updated
@@ -23,6 +25,10 @@ DECISIONS MADE THIS SESSION
   - STANDING TAV PRINCIPLE: toy dApps are always deployable on mainnet with a
     lightweight frontend suitable for third-party demos; canister-only is never
     the finished state
+  - Stage 5 pass 1 complete: frontend scaffold committed, local Internet
+    Identity support added, local deploy succeeds, and frontend sign-in works
+  - Next task is Stage 5 pass 2: wire the frontend to real TinyPress flows
+    without broadening into Stage 6 or MKTd03 integration
 
 OPEN QUESTIONS (not yet resolved)
   - StoredCommentCodec derives CandidType unnecessarily — harmless, park for cleanup pass
@@ -59,12 +65,13 @@ KNOWN GOTCHAS FOR NEXT SESSION
   - TinyPress memory IDs 0..10 all in use — any new stable structures start at MemoryId(11)
 
 ACCEPTANCE GATES (Stage 5)
-  [ ] Assumption surfacing check completed before any implementation prompt
-  [ ] Frontend stack decided and ADR drafted before any code written
-  [ ] Profile create / view / delete working in UI
-  [ ] Post create / view working in UI
-  [ ] Comment create / view working in UI
-  [ ] Orphaned records state visible after profile deletion (demo money shot)
+  [x] Assumption surfacing check completed before any implementation prompt
+  [x] Frontend stack decided and ADR drafted before any code written
+  [x] Stage 5 pass 1 complete: frontend scaffold + local Internet Identity support
+  [ ] Stage 5 pass 2 complete: profile create / view / delete working in UI
+  [ ] Stage 5 pass 2 complete: post create / view working in UI
+  [ ] Stage 5 pass 2 complete: comment create / view working in UI
+  [ ] Stage 5 pass 2 complete: orphaned records state visible after profile deletion
   [ ] Deployable to mainnet
   [ ] Suitable for third-party demo without CLI knowledge
   [ ] RESTART_PACK and MILESTONE_LOG updated in GitHub before session closes
@@ -76,7 +83,10 @@ SAFE RESTART PROMPT
   and confirm your understanding of the current state before we proceed.
   Context if needed: We are building MKTd03 — a zombie-delete / GDPR tombstoning
   protocol on ICP. The toy dApp is TinyPress, a Nuance-inspired single-canister
-  publishing app. TinyPress canister v1 is feature-complete. Stage 5 is a lightweight
-  frontend for mainnet demo deployment — this must be built before MKTd03 integration begins.
+  publishing app. TinyPress canister v1 is feature-complete. Stage 5 pass 1
+  is complete: frontend scaffold exists, local deploy succeeds, local
+  Internet Identity support works, and sign-in works locally. Next task is
+  Stage 5 pass 2: wire the frontend to real TinyPress flows before MKTd03
+  integration begins.
   TinyPress repo: Together-Alone-Ventures/TinyPress on GitHub, main branch.
   MKTd03 repo: Together-Alone-Ventures/MKTd03 on GitHub, main branch.

@@ -39,6 +39,39 @@ Do not revisit:
   - TinyPress v1 canister feature set — complete, closed.
   - Stage ordering — frontend (Stage 5) precedes MKTd03 integration.
 
+## 2026-03-25 — MILESTONE: TinyPress Stage 5 pass 1 complete
+
+Decisions made:
+  - Stage 5 is split into at least two passes:
+    pass 1 = frontend scaffold + local Internet Identity support;
+    pass 2 = real TinyPress frontend wiring.
+  - Local Internet Identity support belongs in TinyPress repo config for
+    development, using a pinned Internet Identity release and local-only
+    deployment flow.
+  - No TinyPress backend canister calls were added in pass 1. The frontend
+    remains an auth shell plus ordinary app-facing panels only.
+
+Irreversible actions taken:
+  - Committed 98bc643 to TinyPress main for the Stage 5 frontend scaffold.
+  - Committed 4381f65 to TinyPress main for local Internet Identity support.
+  - TinyPress now has:
+    React + Vite frontend under src/frontend,
+    frontend asset canister config in dfx.json,
+    local Internet Identity support for development,
+    successful local sign-in flow.
+
+Do not revisit:
+  - Stage 5 pass ordering — pass 1 before real frontend wiring.
+  - Local Internet Identity support as a prerequisite for frontend auth testing.
+  - Pass 1 scope boundary — no real TinyPress canister calls yet.
+
+Next task:
+  - Stage 5 pass 2 — frontend wiring for real TinyPress flows:
+    profile create / view / delete,
+    post create / view,
+    comment create / view,
+    and the surviving-records demo flow after profile deletion.
+
 ## 2026-03-25 — SESSION LESSON: Assumption surfacing at stage transitions
 
 What happened:
