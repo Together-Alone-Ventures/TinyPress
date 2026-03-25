@@ -1,7 +1,12 @@
 import { AuthClient } from "@dfinity/auth-client";
 import { useEffect, useState, type FormEvent } from "react";
 import { createTinypressActor } from "./lib/tinypress";
-import type { Profile, TinyPressError } from "./declarations/tinypress/tinypress.did";
+import type {
+  Comment,
+  Post,
+  Profile,
+  TinyPressError
+} from "./declarations/tinypress/tinypress.did";
 
 type SessionState = {
   isReady: boolean;
@@ -24,21 +29,6 @@ const identityProvider = import.meta.env.VITE_INTERNET_IDENTITY_CANISTER_ID
 // per signed-in principal until a later API shape replaces it.
 const profileStorageKeyPrefix = "tinypress.profile_id";
 
-const appPanels = [
-  {
-    title: "Write",
-    body: "Draft a post with a clear title and publish it to your page."
-  },
-  {
-    title: "Feed",
-    body: "Browse recent writing and open a post to read the full piece."
-  },
-  {
-    title: "Comments",
-    body: "Join the conversation with short responses on each post."
-  }
-] as const;
-
 type ProfileState = {
   status: "signed_out" | "idle" | "loading" | "ready";
   profile: Profile | null;
@@ -58,6 +48,36 @@ const emptyProfileForm: ProfileFormState = {
   bio: ""
 };
 
+type PostFormState = {
+  title: string;
+  body: string;
+};
+
+type PostListState = {
+  status: "idle" | "loading" | "ready";
+  posts: Post[];
+  message: string | null;
+};
+
+type CommentFormState = {
+  content: string;
+};
+
+type CommentListState = {
+  status: "idle" | "loading" | "ready";
+  comments: Comment[];
+  message: string | null;
+};
+
+const emptyPostForm: PostFormState = {
+  title: "",
+  body: ""
+};
+
+const emptyCommentForm: CommentFormState = {
+  content: ""
+};
+
 function formatPrincipal(value: string | null): string {
   if (!value) {
     return "Not connected";
@@ -72,6 +92,10 @@ function formatPrincipal(value: string | null): string {
 
 function formatDate(value: bigint): string {
   return new Date(Number(value) / 1_000_000).toLocaleString();
+}
+
+function formatNat64(value: bigint): string {
+  return value.toString();
 }
 
 function getProfileStorageKey(principal: string): string {
@@ -137,8 +161,24 @@ export default function App() {
     storedProfileId: null,
     message: null
   });
+  const [deletedProfileId, setDeletedProfileId] = useState<bigint | null>(null);
   const [profileForm, setProfileForm] = useState<ProfileFormState>(emptyProfileForm);
   const [profileBusy, setProfileBusy] = useState(false);
+  const [postForm, setPostForm] = useState<PostFormState>(emptyPostForm);
+  const [postState, setPostState] = useState<PostListState>({
+    status: "idle",
+    posts: [],
+    message: null
+  });
+  const [postBusy, setPostBusy] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState<bigint | null>(null);
+  const [commentForm, setCommentForm] = useState<CommentFormState>(emptyCommentForm);
+  const [commentState, setCommentState] = useState<CommentListState>({
+    status: "idle",
+    comments: [],
+    message: null
+  });
+  const [commentBusy, setCommentBusy] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -190,6 +230,7 @@ export default function App() {
 
     async function loadProfile() {
       if (!authClient || !session.isAuthenticated || !session.principal) {
+        setDeletedProfileId(null);
         setProfileState({
           status: "signed_out",
           profile: null,
@@ -275,6 +316,135 @@ export default function App() {
       isMounted = false;
     };
   }, [authClient, session.isAuthenticated, session.principal]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const postOwnerProfileId = profileState.profile?.profile_id ?? deletedProfileId;
+
+    async function loadPosts() {
+      if (!authClient || !session.isAuthenticated || postOwnerProfileId === null) {
+        setPostState({
+          status: "idle",
+          posts: [],
+          message: null
+        });
+        setSelectedPostId(null);
+        setCommentState({
+          status: "idle",
+          comments: [],
+          message: null
+        });
+        return;
+      }
+
+      setPostState((current) => ({
+        ...current,
+        status: "loading",
+        message: null
+      }));
+
+      try {
+        const actor = await createTinypressActor(authClient.getIdentity());
+        const posts = await actor.get_posts_by_author(postOwnerProfileId);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setPostState({
+          status: "ready",
+          posts,
+          message: null
+        });
+
+        setSelectedPostId((current) => {
+          if (current && posts.some((post) => post.post_id === current)) {
+            return current;
+          }
+
+          return posts[0]?.post_id ?? null;
+        });
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setPostState({
+          status: "ready",
+          posts: [],
+          message: error instanceof Error ? error.message : "Unable to load posts."
+        });
+        setSelectedPostId(null);
+      }
+    }
+
+    void loadPosts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [authClient, deletedProfileId, profileState.profile, session.isAuthenticated]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadComments() {
+      if (!authClient || !session.isAuthenticated || selectedPostId === null) {
+        setCommentState({
+          status: "idle",
+          comments: [],
+          message: null
+        });
+        return;
+      }
+
+      setCommentState((current) => ({
+        ...current,
+        status: "loading",
+        message: null
+      }));
+
+      try {
+        const actor = await createTinypressActor(authClient.getIdentity());
+        const result = await actor.get_comments_by_post(selectedPostId);
+
+        if (!isMounted) {
+          return;
+        }
+
+        if ("Err" in result) {
+          setCommentState({
+            status: "ready",
+            comments: [],
+            message: formatTinyPressError(result.Err)
+          });
+          return;
+        }
+
+        setCommentState({
+          status: "ready",
+          comments: result.Ok,
+          message: null
+        });
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setCommentState({
+          status: "ready",
+          comments: [],
+          message: error instanceof Error ? error.message : "Unable to load comments."
+        });
+      }
+    }
+
+    void loadComments();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [authClient, selectedPostId, session.isAuthenticated]);
 
   async function handleSignIn() {
     if (!authClient) {
@@ -398,6 +568,7 @@ export default function App() {
         storedProfileId: result.Ok.toString(),
         message: null
       });
+      setDeletedProfileId(null);
       setProfileForm(emptyProfileForm);
     } catch (error) {
       setProfileState((current) => ({
@@ -414,6 +585,7 @@ export default function App() {
       return;
     }
 
+    const removedProfileId = profileState.profile.profile_id;
     setProfileBusy(true);
     setProfileState((current) => ({
       ...current,
@@ -433,6 +605,7 @@ export default function App() {
       }
 
       clearStoredProfileId(session.principal);
+      setDeletedProfileId(removedProfileId);
       setProfileState({
         status: "idle",
         profile: null,
@@ -449,6 +622,118 @@ export default function App() {
       setProfileBusy(false);
     }
   }
+
+  function handlePostFieldChange(field: keyof PostFormState, value: string) {
+    setPostForm((current) => ({
+      ...current,
+      [field]: value
+    }));
+  }
+
+  async function handleCreatePost(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!authClient || !profileState.profile) {
+      return;
+    }
+
+    setPostBusy(true);
+    setPostState((current) => ({
+      ...current,
+      message: null
+    }));
+
+    try {
+      const actor = await createTinypressActor(authClient.getIdentity());
+      const result = await actor.create_post(postForm.title.trim(), postForm.body.trim());
+
+      if ("Err" in result) {
+        setPostState((current) => ({
+          ...current,
+          message: formatTinyPressError(result.Err)
+        }));
+        return;
+      }
+
+      const posts = await actor.get_posts_by_author(profileState.profile.profile_id);
+      setPostState({
+        status: "ready",
+        posts,
+        message: null
+      });
+      setSelectedPostId(result.Ok);
+      setPostForm(emptyPostForm);
+    } catch (error) {
+      setPostState((current) => ({
+        ...current,
+        message: error instanceof Error ? error.message : "Unable to publish your post."
+      }));
+    } finally {
+      setPostBusy(false);
+    }
+  }
+
+  function handleCommentFieldChange(value: string) {
+    setCommentForm({
+      content: value
+    });
+  }
+
+  async function handleCreateComment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!authClient || selectedPostId === null) {
+      return;
+    }
+
+    setCommentBusy(true);
+    setCommentState((current) => ({
+      ...current,
+      message: null
+    }));
+
+    try {
+      const actor = await createTinypressActor(authClient.getIdentity());
+      const result = await actor.create_comment(selectedPostId, commentForm.content.trim());
+
+      if ("Err" in result) {
+        setCommentState((current) => ({
+          ...current,
+          message: formatTinyPressError(result.Err)
+        }));
+        return;
+      }
+
+      const comments = await actor.get_comments_by_post(selectedPostId);
+
+      if ("Err" in comments) {
+        setCommentState({
+          status: "ready",
+          comments: [],
+          message: formatTinyPressError(comments.Err)
+        });
+        return;
+      }
+
+      setCommentState({
+        status: "ready",
+        comments: comments.Ok,
+        message: null
+      });
+      setCommentForm(emptyCommentForm);
+    } catch (error) {
+      setCommentState((current) => ({
+        ...current,
+        message: error instanceof Error ? error.message : "Unable to publish your comment."
+      }));
+    } finally {
+      setCommentBusy(false);
+    }
+  }
+
+  const selectedPost = postState.posts.find((post) => post.post_id === selectedPostId) ?? null;
+  const visibleProfileId = profileState.profile?.profile_id ?? deletedProfileId;
+  const showingOrphanedPosts = profileState.profile === null && deletedProfileId !== null;
 
   return (
     <div className="shell">
@@ -601,13 +886,169 @@ export default function App() {
             ) : null}
           </article>
 
-          {appPanels.map((panel) => (
-            <article key={panel.title} className="panel">
-              <p className="panel__kicker">{panel.title}</p>
-              <h2>{panel.title}</h2>
-              <p>{panel.body}</p>
-            </article>
-          ))}
+          <article className="panel">
+            <p className="panel__kicker">Write</p>
+            <h2>New post</h2>
+
+            {!session.isAuthenticated ? (
+              <p>Sign in to publish from your profile.</p>
+            ) : !profileState.profile ? (
+              <p>Create a profile before publishing a post.</p>
+            ) : (
+              <form className="profile-form" onSubmit={handleCreatePost}>
+                <label className="field">
+                  <span>Title</span>
+                  <input
+                    type="text"
+                    value={postForm.title}
+                    onChange={(event) => handlePostFieldChange("title", event.target.value)}
+                    placeholder="A note from TinyPress"
+                    maxLength={120}
+                    required
+                  />
+                </label>
+
+                <label className="field">
+                  <span>Body</span>
+                  <textarea
+                    value={postForm.body}
+                    onChange={(event) => handlePostFieldChange("body", event.target.value)}
+                    placeholder="Write your post."
+                    rows={6}
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  className="button button--primary"
+                  disabled={postBusy}
+                >
+                  Publish post
+                </button>
+              </form>
+            )}
+
+            {postState.message ? <p className="auth-card__error">{postState.message}</p> : null}
+          </article>
+
+          <article className="panel">
+            <p className="panel__kicker">Feed</p>
+            <h2>{showingOrphanedPosts ? "Published posts" : "Your posts"}</h2>
+
+            {visibleProfileId === null ? (
+              <p>Create a profile to start publishing.</p>
+            ) : postState.status === "loading" ? (
+              <p>Loading posts…</p>
+            ) : postState.posts.length === 0 ? (
+              <p>No posts yet.</p>
+            ) : (
+              <div className="profile-summary">
+                {showingOrphanedPosts ? (
+                  <p className="panel__hint">
+                    Posts from profile #{formatNat64(visibleProfileId)} remain visible.
+                  </p>
+                ) : null}
+
+                <div className="profile-summary__actions">
+                  {postState.posts.map((post) => (
+                    <button
+                      key={post.post_id.toString()}
+                      type="button"
+                      className="button button--secondary"
+                      onClick={() => setSelectedPostId(post.post_id)}
+                    >
+                      {post.title}
+                    </button>
+                  ))}
+                </div>
+
+                {selectedPost ? (
+                  <dl className="profile-summary__details">
+                    <div>
+                      <dt>Title</dt>
+                      <dd>{selectedPost.title}</dd>
+                    </div>
+                    <div>
+                      <dt>Author</dt>
+                      <dd>@{selectedPost.creator_handle}</dd>
+                    </div>
+                    <div>
+                      <dt>Published</dt>
+                      <dd>{formatDate(selectedPost.created_at)}</dd>
+                    </div>
+                    <div>
+                      <dt>Body</dt>
+                      <dd>{selectedPost.body}</dd>
+                    </div>
+                  </dl>
+                ) : null}
+              </div>
+            )}
+
+            {postState.message ? <p className="auth-card__error">{postState.message}</p> : null}
+          </article>
+
+          <article className="panel">
+            <p className="panel__kicker">Comments</p>
+            <h2>Conversation</h2>
+
+            {!selectedPost ? (
+              <p>Select a post to read and add comments.</p>
+            ) : (
+              <div className="profile-summary">
+                <dl className="profile-summary__details">
+                  <div>
+                    <dt>Post</dt>
+                    <dd>{selectedPost.title}</dd>
+                  </div>
+                </dl>
+
+                {commentState.status === "loading" ? (
+                  <p>Loading comments…</p>
+                ) : commentState.comments.length === 0 ? (
+                  <p>No comments yet.</p>
+                ) : (
+                  <dl className="profile-summary__details">
+                    {commentState.comments.map((comment) => (
+                      <div key={comment.comment_id.toString()}>
+                        <dt>Comment #{formatNat64(comment.comment_id)}</dt>
+                        <dd>{comment.content}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+
+                {profileState.profile ? (
+                  <form className="profile-form" onSubmit={handleCreateComment}>
+                    <label className="field">
+                      <span>Add a comment</span>
+                      <textarea
+                        value={commentForm.content}
+                        onChange={(event) => handleCommentFieldChange(event.target.value)}
+                        placeholder="Join the conversation."
+                        rows={4}
+                        required
+                      />
+                    </label>
+
+                    <button
+                      type="submit"
+                      className="button button--primary"
+                      disabled={commentBusy}
+                    >
+                      Post comment
+                    </button>
+                  </form>
+                ) : session.isAuthenticated ? (
+                  <p>Create a profile to add a comment.</p>
+                ) : null}
+              </div>
+            )}
+
+            {commentState.message ? (
+              <p className="auth-card__error">{commentState.message}</p>
+            ) : null}
+          </article>
         </section>
       </main>
     </div>
