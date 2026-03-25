@@ -2,3 +2,10 @@
 target/
 src/frontend/node_modules/
 src/frontend/dist/
+
+src/frontend/.env
+src/frontend/.env
+src/frontend/*.tsbuildinfo
+src/frontend/src/*.tsbuildinfo
+src/frontend/vite.config.js
+src/frontend/vite.config.d.ts
