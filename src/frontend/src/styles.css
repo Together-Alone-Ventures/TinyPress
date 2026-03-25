@@ -213,9 +213,79 @@ button {
   min-height: 220px;
 }
 
+.panel--profile {
+  grid-column: span 2;
+}
+
 .panel p:last-child {
   margin-bottom: 0;
   color: rgba(16, 32, 51, 0.76);
+}
+
+.profile-form,
+.profile-summary {
+  margin-top: 1rem;
+}
+
+.profile-form {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.field span {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  border: 1px solid rgba(16, 32, 51, 0.14);
+  border-radius: 16px;
+  padding: 0.85rem 1rem;
+  background: rgba(255, 255, 255, 0.85);
+  color: #102033;
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.profile-summary__details {
+  display: grid;
+  gap: 0.9rem;
+  margin: 0;
+}
+
+.profile-summary__details div {
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(16, 32, 51, 0.08);
+}
+
+.profile-summary__details dt {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(16, 32, 51, 0.58);
+}
+
+.profile-summary__details dd {
+  margin: 0.2rem 0 0;
+}
+
+.profile-summary__actions {
+  margin-top: 1rem;
+}
+
+.panel__hint {
+  margin-top: 1rem;
+  font-size: 0.88rem;
+  color: rgba(16, 32, 51, 0.58);
 }
 
 @media (max-width: 960px) {
@@ -225,6 +295,10 @@ button {
 
   .panel-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .panel--profile {
+    grid-column: span 2;
   }
 }
 
@@ -242,6 +316,10 @@ button {
 
   .panel-grid {
     grid-template-columns: 1fr;
+  }
+
+  .panel--profile {
+    grid-column: span 1;
   }
 
   .hero__copy h1 {
