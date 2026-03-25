@@ -59,6 +59,25 @@ KNOWN GOTCHAS FOR NEXT SESSION
   - StableBTreeMap::range() yields LazyEntry in 0.7.2 — use entry.key().clone(), not tuple destructure
   - Interface file must be updated before acceptance testing — dfx produces misleading
     type errors (not logic errors) when .did is stale
+  - Frontend declarations under src/frontend/src/declarations/tinypress must be
+    regenerated with dfx generate tinypress whenever tinypress.did changes
+  - After any dfx start --clean, local canister IDs drift. Rewrite
+    src/frontend/.env with fresh internet_identity and tinypress IDs, then
+    rebuild the frontend and redeploy tinypress_frontend
+  - Local Internet Identity uses the README-pinned dev release
+    release-2025-04-04-v3 in dfx.json
+  - Local Internet Identity provider URL must use the subdomain form with
+    ?raw=true:
+    http://<internet_identity_canister_id>.localhost:4943/?raw=true
+  - Canonical local recovery sequence:
+      dfx start --clean --background
+      dfx deploy internet_identity
+      dfx deploy tinypress
+      dfx generate tinypress
+      write src/frontend/.env with VITE_DFX_NETWORK=local plus fresh
+      VITE_INTERNET_IDENTITY_CANISTER_ID and VITE_TINYPRESS_CANISTER_ID
+      npm --prefix src/frontend run build
+      dfx deploy tinypress_frontend
   - stef-mvp identity is encrypted — will fail in non-interactive/bash contexts
   - Commit message exclamation marks trigger bash history expansion in WSL —
     use single quotes around commit message or avoid ! in messages
