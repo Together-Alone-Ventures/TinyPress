@@ -6,7 +6,7 @@ must not begin until Stage 6 is complete.
 
 GIT STATE
     MKTd03:                    main @ f55d63615ed6966882484dfaa1c012083bbddc2a
-    TinyPress:                 main @ REPLACE_WITH_FINAL_TINYPRESS_FULL_SHA
+    TinyPress:                 main @ eb6b42f231adda4594b7989984777419c742afc5
     TAV-Engineering-Standards: main @ d6c7d17 (full SHA not yet refreshed)
 
 FILES OPEN (edited, not yet committed)
