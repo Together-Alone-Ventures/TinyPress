@@ -5,6 +5,19 @@
       "type": "rust",
       "candid": "tinypress.did",
       "package": "tinypress"
+    },
+    "tinypress_frontend": {
+      "type": "assets",
+      "source": [
+        "src/frontend/dist"
+      ],
+      "build": [
+        "npm --prefix src/frontend install",
+        "npm --prefix src/frontend run build"
+      ],
+      "dependencies": [
+        "tinypress"
+      ]
     }
   },
   "defaults": {
