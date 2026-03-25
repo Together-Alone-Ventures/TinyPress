@@ -157,3 +157,42 @@ Apply next time:
          written down?
   - Playbook formalisation of this checklist is a hard gate (Stage 6) before
     MKTd03 integration begins.
+
+    ## 2026-03-25 — Stage 5 pass 2B completed
+
+Completed TinyPress Stage 5 pass 2B in the frontend.
+
+The browser UI now supports:
+- post create via `create_post(title, body)`
+- post list/view by author via `get_posts_by_author(profile_id)`
+- comment create for the selected post via `create_comment(post_id, content)`
+- comment list by post via `get_comments_by_post(post_id)`
+
+The previous static placeholder Write / Feed / Comments panels in `src/frontend/src/App.tsx`
+were replaced with live frontend wiring using the generated TinyPress actor types.
+
+The orphaned-record demo path is now visible in the UI:
+after `delete_profile` succeeds, the frontend stores the deleted `profile_id` in component state,
+re-fetches surviving posts via `get_posts_by_author(deletedProfileId)`, and preserves comments for
+the selected post. The profile panel resets to idle/create-profile state and does not pretend the
+deleted profile still exists.
+
+Pass 2B defects found and fixed during implementation:
+- removed `required` from the post body textarea so title-only posts are allowed, matching ADR/spec
+- cleared `deletedProfileId` on signed-out/no-session reset so stale orphaned posts do not reappear
+  after sign-out/sign-back-in flows
+- tightened comment composer gating so the form is shown only when an active TinyPress profile exists;
+  after profile deletion, existing comments remain visible but commenting is disabled with explanatory text
+
+Verification status:
+- `npm --prefix src/frontend run build` passed after final changes
+- code/build audit confirmed App.tsx-only frontend change set and no Rust / Candid drift
+- browser behaviour was manually observed as working, but not independently reproduced by tool audit
+
+Current limitations / notes:
+- orphaned-post visibility after profile deletion is session-local because the deleted profile id is
+  stored in component state
+- comments remain visible after profile deletion for the currently selected post because the selected
+  post id remains in component state
+- feed scope remains author-scoped only, which is sufficient for Stage 5 pass 2B
+- Stage 6 remains the hard gate before any MKTd03 integration work begins
