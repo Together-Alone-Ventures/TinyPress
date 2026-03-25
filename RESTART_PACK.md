@@ -1,16 +1,15 @@
 DATE: 2026-03-25
 
-CURRENT GOAL: TinyPress Stage 5 pass 2 — wire the frontend to real
-TinyPress flows. Stage 5 pass 1 is complete: the React + Vite frontend
-scaffold exists, local deploy succeeds, local Internet Identity support
-works, and sign-in works locally. No real TinyPress backend canister
-calls have been added yet. Stage 6 (playbook + TAV Design Principles
+CURRENT GOAL: TinyPress Stage 5 pass 2B — wire posts and comments into
+the frontend demo flow. Stage 5 pass 2A is complete and working:
+sign in, create profile, view profile, and delete profile all work
+end-to-end in the browser. Stage 6 (playbook + TAV Design Principles
 update) still follows Stage 5 and remains a hard gate before MKTd03
 integration begins.
 
 GIT STATE
     MKTd03:                    main @ f55d63615ed6966882484dfaa1c012083bbddc2a
-    TinyPress:                 main @ 4381f65c2c8e598f8edf434f99107558c7dc49ef
+    TinyPress:                 main @ 8104dcf7c98267bf7ca5cef3d58e707f60773cd9
     TAV-Engineering-Standards: main @ d6c7d17 (full SHA not yet refreshed)
 
 FILES OPEN (edited, not yet committed)
@@ -27,8 +26,19 @@ DECISIONS MADE THIS SESSION
     the finished state
   - Stage 5 pass 1 complete: frontend scaffold committed, local Internet
     Identity support added, local deploy succeeds, and frontend sign-in works
-  - Next task is Stage 5 pass 2: wire the frontend to real TinyPress flows
-    without broadening into Stage 6 or MKTd03 integration
+  - Stage 5 pass 2A complete: generated declarations committed, profile
+    create / view / delete wired, and browser flow verified end-to-end
+  - Canonical local recovery loop is now understood: after any
+    dfx start --clean, redeploy canisters, regenerate declarations, rewrite
+    src/frontend/.env, rebuild, and redeploy tinypress_frontend
+  - Local Internet Identity works with the README-pinned dev release
+    release-2025-04-04-v3 and requires the provider URL form
+    http://<internet_identity_canister_id>.localhost:4943/?raw=true
+  - dfx deploy does not accept multiple canister names in one command for
+    this setup; deploy internet_identity and tinypress separately
+  - Next task is Stage 5 pass 2B: post create, post list/view, comment
+    create, comment list by post, and preserving visibility of surviving
+    posts/comments after profile deletion
 
 OPEN QUESTIONS (not yet resolved)
   - StoredCommentCodec derives CandidType unnecessarily — harmless, park for cleanup pass
@@ -61,23 +71,22 @@ KNOWN GOTCHAS FOR NEXT SESSION
     type errors (not logic errors) when .did is stale
   - Frontend declarations under src/frontend/src/declarations/tinypress must be
     regenerated with dfx generate tinypress whenever tinypress.did changes
-  - After any dfx start --clean, local canister IDs drift. Rewrite
-    src/frontend/.env with fresh internet_identity and tinypress IDs, then
-    rebuild the frontend and redeploy tinypress_frontend
+  - Canonical local recovery loop after any dfx start --clean:
+      dfx start --clean --background
+      dfx deploy internet_identity
+      dfx deploy tinypress
+      dfx generate tinypress
+      rewrite src/frontend/.env with VITE_DFX_NETWORK=local plus fresh
+      VITE_INTERNET_IDENTITY_CANISTER_ID and VITE_TINYPRESS_CANISTER_ID
+      npm --prefix src/frontend run build
+      dfx deploy tinypress_frontend
   - Local Internet Identity uses the README-pinned dev release
     release-2025-04-04-v3 in dfx.json
   - Local Internet Identity provider URL must use the subdomain form with
     ?raw=true:
     http://<internet_identity_canister_id>.localhost:4943/?raw=true
-  - Canonical local recovery sequence:
-      dfx start --clean --background
-      dfx deploy internet_identity
-      dfx deploy tinypress
-      dfx generate tinypress
-      write src/frontend/.env with VITE_DFX_NETWORK=local plus fresh
-      VITE_INTERNET_IDENTITY_CANISTER_ID and VITE_TINYPRESS_CANISTER_ID
-      npm --prefix src/frontend run build
-      dfx deploy tinypress_frontend
+  - dfx deploy does not accept multiple canister names in one command for
+    this setup
   - stef-mvp identity is encrypted — will fail in non-interactive/bash contexts
   - Commit message exclamation marks trigger bash history expansion in WSL —
     use single quotes around commit message or avoid ! in messages
@@ -87,10 +96,10 @@ ACCEPTANCE GATES (Stage 5)
   [x] Assumption surfacing check completed before any implementation prompt
   [x] Frontend stack decided and ADR drafted before any code written
   [x] Stage 5 pass 1 complete: frontend scaffold + local Internet Identity support
-  [ ] Stage 5 pass 2 complete: profile create / view / delete working in UI
-  [ ] Stage 5 pass 2 complete: post create / view working in UI
-  [ ] Stage 5 pass 2 complete: comment create / view working in UI
-  [ ] Stage 5 pass 2 complete: orphaned records state visible after profile deletion
+  [x] Stage 5 pass 2A complete: profile create / view / delete working in UI
+  [ ] Stage 5 pass 2B complete: post create / view working in UI
+  [ ] Stage 5 pass 2B complete: comment create / view working in UI
+  [ ] Stage 5 pass 2B complete: orphaned records state visible after profile deletion
   [ ] Deployable to mainnet
   [ ] Suitable for third-party demo without CLI knowledge
   [ ] RESTART_PACK and MILESTONE_LOG updated in GitHub before session closes
@@ -102,10 +111,11 @@ SAFE RESTART PROMPT
   and confirm your understanding of the current state before we proceed.
   Context if needed: We are building MKTd03 — a zombie-delete / GDPR tombstoning
   protocol on ICP. The toy dApp is TinyPress, a Nuance-inspired single-canister
-  publishing app. TinyPress canister v1 is feature-complete. Stage 5 pass 1
-  is complete: frontend scaffold exists, local deploy succeeds, local
-  Internet Identity support works, and sign-in works locally. Next task is
-  Stage 5 pass 2: wire the frontend to real TinyPress flows before MKTd03
-  integration begins.
+  publishing app. TinyPress canister v1 is feature-complete. Stage 5 pass 2A
+  is complete: local Internet Identity works, the local recovery loop is
+  understood, and the frontend now supports sign in plus profile create /
+  view / delete end-to-end. Next task is Stage 5 pass 2B: post create,
+  post list/view, comment create, comment list by post, and preserving
+  visibility of surviving posts/comments after profile deletion.
   TinyPress repo: Together-Alone-Ventures/TinyPress on GitHub, main branch.
   MKTd03 repo: Together-Alone-Ventures/MKTd03 on GitHub, main branch.

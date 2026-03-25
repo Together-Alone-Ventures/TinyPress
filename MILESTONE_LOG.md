@@ -72,6 +72,46 @@ Next task:
     comment create / view,
     and the surviving-records demo flow after profile deletion.
 
+## 2026-03-25 — MILESTONE: TinyPress Stage 5 pass 2A complete
+
+Decisions made:
+  - Pass 2A is limited to the minimum frontend-side canister integration
+    needed for profile flows only.
+  - Generated declarations are committed under
+    src/frontend/src/declarations/tinypress and remain derived from
+    tinypress.did via dfx generate.
+  - Local Internet Identity uses the README-pinned dev release
+    release-2025-04-04-v3 for this repo's local setup.
+  - The local Internet Identity provider URL must use the subdomain form
+    with ?raw=true.
+  - After any dfx start --clean, local canister IDs drift and
+    src/frontend/.env must be rewritten before rebuilding the frontend.
+  - dfx deploy does not accept multiple canister names in one command for
+    this setup; internet_identity and tinypress are deployed separately.
+
+Irreversible actions taken:
+  - Committed 8104dcf to TinyPress main for Stage 5 pass 2A:
+    profile wiring, local Internet Identity fix, and asset certification.
+  - TinyPress now has a working browser flow for:
+    sign in,
+    create profile,
+    view profile,
+    delete profile.
+
+Do not revisit:
+  - Pass 2A scope boundary — profile only, no posts/comments yet.
+  - Local recovery loop — deploy canisters, dfx generate, rewrite .env,
+    rebuild, redeploy frontend.
+  - README-pinned Internet Identity release for local use in this repo.
+
+Next task:
+  - Stage 5 pass 2B:
+    post create,
+    post list/view,
+    comment create,
+    comment list by post,
+    preserve visibility of surviving posts/comments after profile deletion.
+
 ## 2026-03-25 — SESSION LESSON: Assumption surfacing at stage transitions
 
 What happened:
