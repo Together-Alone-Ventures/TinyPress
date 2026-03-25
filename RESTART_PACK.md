@@ -1,20 +1,16 @@
 DATE: 2026-03-25
 
-CURRENT GOAL: TinyPress Stage 5 pass 2B — wire posts and comments into
-the frontend demo flow. Stage 5 pass 2A is complete and working:
-sign in, create profile, view profile, and delete profile all work
-end-to-end in the browser. Stage 6 (playbook + TAV Design Principles
-update) still follows Stage 5 and remains a hard gate before MKTd03
-integration begins.
+CURRENT GOAL: Close out Stage 5 pass 2B continuity updates, then begin
+Stage 6 — playbook + TAV Design Principles updates. MKTd03 integration
+must not begin until Stage 6 is complete.
 
 GIT STATE
     MKTd03:                    main @ f55d63615ed6966882484dfaa1c012083bbddc2a
-    TinyPress:                 main @ 8104dcf7c98267bf7ca5cef3d58e707f60773cd9
+    TinyPress:                 main @ REPLACE_WITH_FINAL_TINYPRESS_FULL_SHA
     TAV-Engineering-Standards: main @ d6c7d17 (full SHA not yet refreshed)
 
 FILES OPEN (edited, not yet committed)
-  - RESTART_PACK.md
-  - MILESTONE_LOG.md
+  None
 
 DECISIONS MADE THIS SESSION
   - Stage 4 complete: get_comments_by_author exposed as public query, DID updated
@@ -36,9 +32,23 @@ DECISIONS MADE THIS SESSION
     http://<internet_identity_canister_id>.localhost:4943/?raw=true
   - dfx deploy does not accept multiple canister names in one command for
     this setup; deploy internet_identity and tinypress separately
-  - Next task is Stage 5 pass 2B: post create, post list/view, comment
-    create, comment list by post, and preserving visibility of surviving
-    posts/comments after profile deletion
+  - Stage 5 pass 2B complete: frontend now supports post create, post
+    list/view by author, comment create on selected post, and comment
+    list by post
+  - Orphaned-record demo path is now visible in the UI: after profile
+    deletion, the frontend re-fetches surviving posts by deleted
+    profile_id and preserves comments for the selected post
+  - The profile panel resets correctly after delete_profile and does not
+    pretend the deleted profile still exists
+  - Comment creation is gated on active TinyPress profile presence,
+    not merely Internet Identity authentication
+  - Title-only posts are allowed in the frontend, matching ADR/spec
+  - deletedProfileId is cleared on signed-out/no-session reset so stale
+    orphaned posts do not reappear after sign-out/sign-back-in flows
+  - Browser behaviour was manually observed as working; code/build audit
+    confirmed App.tsx-only frontend changes, no Rust/DID drift, and a
+    successful frontend build, but did not independently reproduce live UI interaction
+  - Stage 6 remains the hard gate before any MKTd03 integration work begins
 
 OPEN QUESTIONS (not yet resolved)
   - StoredCommentCodec derives CandidType unnecessarily — harmless, park for cleanup pass
@@ -47,8 +57,6 @@ OPEN QUESTIONS (not yet resolved)
   - claude.md should be renamed to CLAUDE.md (minor)
   - Playbook updates still pending: .did-before-testing sequencing (§8.1 extension);
     LazyEntry API lesson (verify iterator API against installed crate version)
-  - get_comments_by_post is incorrectly marked #[ic_cdk::update] — not fixed in
-    Stage 4 (out of scope); park for cleanup pass
 
 KNOWN GOTCHAS FOR NEXT SESSION
   - Git repo (MKTd03) is in WSL at /home/stef_savanah/projects/MKTd03
@@ -91,15 +99,21 @@ KNOWN GOTCHAS FOR NEXT SESSION
   - Commit message exclamation marks trigger bash history expansion in WSL —
     use single quotes around commit message or avoid ! in messages
   - TinyPress memory IDs 0..10 all in use — any new stable structures start at MemoryId(11)
+  - Orphaned-post visibility after profile deletion is session-local in the
+    current demo flow because deletedProfileId is held in component state
+  - Comments remain visible after profile deletion for the currently selected
+    post because selectedPostId remains in component state
+  - Feed scope is still author-scoped only; no broader discovery/feed work has
+    been added in Stage 5 pass 2B
 
-ACCEPTANCE GATES (Stage 5)
+ACCEPTANCE GATES (Stage 5 / Stage 6)
   [x] Assumption surfacing check completed before any implementation prompt
   [x] Frontend stack decided and ADR drafted before any code written
   [x] Stage 5 pass 1 complete: frontend scaffold + local Internet Identity support
   [x] Stage 5 pass 2A complete: profile create / view / delete working in UI
-  [ ] Stage 5 pass 2B complete: post create / view working in UI
-  [ ] Stage 5 pass 2B complete: comment create / view working in UI
-  [ ] Stage 5 pass 2B complete: orphaned records state visible after profile deletion
+  [x] Stage 5 pass 2B complete: post create / view working in UI
+  [x] Stage 5 pass 2B complete: comment create / view working in UI
+  [x] Stage 5 pass 2B complete: orphaned records state visible after profile deletion
   [ ] Deployable to mainnet
   [ ] Suitable for third-party demo without CLI knowledge
   [ ] RESTART_PACK and MILESTONE_LOG updated in GitHub before session closes
@@ -111,11 +125,14 @@ SAFE RESTART PROMPT
   and confirm your understanding of the current state before we proceed.
   Context if needed: We are building MKTd03 — a zombie-delete / GDPR tombstoning
   protocol on ICP. The toy dApp is TinyPress, a Nuance-inspired single-canister
-  publishing app. TinyPress canister v1 is feature-complete. Stage 5 pass 2A
-  is complete: local Internet Identity works, the local recovery loop is
-  understood, and the frontend now supports sign in plus profile create /
-  view / delete end-to-end. Next task is Stage 5 pass 2B: post create,
-  post list/view, comment create, comment list by post, and preserving
-  visibility of surviving posts/comments after profile deletion.
+  publishing app. TinyPress canister v1 is feature-complete. Stage 5 pass 2B
+  is complete: the frontend now supports sign in, profile create / view /
+  delete, post create, post list/view by author, comment create on selected
+  post, comment list by post, and visibility of surviving orphaned posts /
+  comments after profile deletion. Browser behaviour was manually observed as
+  working; tool audit confirmed code shape and successful build but did not
+  independently reproduce live UI interaction. Next task is Stage 6: update the
+  playbook and TAV Design Principles materials. Do not begin MKTd03 integration
+  until Stage 6 is complete.
   TinyPress repo: Together-Alone-Ventures/TinyPress on GitHub, main branch.
   MKTd03 repo: Together-Alone-Ventures/MKTd03 on GitHub, main branch.
