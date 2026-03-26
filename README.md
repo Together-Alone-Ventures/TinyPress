@@ -1,5 +1,10 @@
 # TinyPress
 
-Zombie-delete-naive toy dApp for MKTd03. Nuance-inspired single-canister publishing app on ICP.
+TinyPress is a toy publishing app on ICP used as the baseline test target for the MKTd03 protocol project.
 
-Stage 2 complete (profiles + posts). Stage 3 (comments) pending.
+## Relationship to MKTd03
+
+Protocol and integration work belongs in the MKTd03 repo:
+- Together-Alone-Ventures/MKTd03
+
+TinyPress remains an application repo focused on app code, app architecture, ADRs, and local operating notes.
