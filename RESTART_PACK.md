@@ -1,138 +1,75 @@
-DATE: 2026-03-25
+# DATE: 2026-03-26
 
-CURRENT GOAL: Close out Stage 5 pass 2B continuity updates, then begin
-Stage 6 — playbook + TAV Design Principles updates. MKTd03 integration
-must not begin until Stage 6 is complete.
+## CURRENT GOAL
 
-GIT STATE
-    MKTd03:                    main @ f55d63615ed6966882484dfaa1c012083bbddc2a
-    TinyPress:                 main @ 6234177ec2b74a5f3acc12bce6304142d851a35a
-    TAV-Engineering-Standards: main @ d6c7d17 (full SHA not yet refreshed)
+TinyPress repo-boundary cleanup checkpoint completed.
 
-FILES OPEN (edited, not yet committed)
-  None
+Immediate next objective:
+- keep TinyPress continuity documents repo-local and current
+- continue TinyPress work without reintroducing MKTd03-specific documentation drift
 
-DECISIONS MADE THIS SESSION
-  - Stage 4 complete: get_comments_by_author exposed as public query, DID updated
-    in same commit, all acceptance gates passed, G secondary review approved (f93a60c)
-  - TinyPress v1 canister is feature-complete — all ADR §8 build stages done
-  - Stage 5 = TinyPress frontend (before MKTd03 integration, not after)
-  - STANDING TAV PRINCIPLE: toy dApps are always deployable on mainnet with a
-    lightweight frontend suitable for third-party demos; canister-only is never
-    the finished state
-  - Stage 5 pass 1 complete: frontend scaffold committed, local Internet
-    Identity support added, local deploy succeeds, and frontend sign-in works
-  - Stage 5 pass 2A complete: generated declarations committed, profile
-    create / view / delete wired, and browser flow verified end-to-end
-  - Canonical local recovery loop is now understood: after any
-    dfx start --clean, redeploy canisters, regenerate declarations, rewrite
-    src/frontend/.env, rebuild, and redeploy tinypress_frontend
-  - Local Internet Identity works with the README-pinned dev release
-    release-2025-04-04-v3 and requires the provider URL form
-    http://<internet_identity_canister_id>.localhost:4943/?raw=true
-  - dfx deploy does not accept multiple canister names in one command for
-    this setup; deploy internet_identity and tinypress separately
-  - Stage 5 pass 2B complete: frontend now supports post create, post
-    list/view by author, comment create on selected post, and comment
-    list by post
-  - Orphaned-record demo path is now visible in the UI: after profile
-    deletion, the frontend re-fetches surviving posts by deleted
-    profile_id and preserves comments for the selected post
-  - The profile panel resets correctly after delete_profile and does not
-    pretend the deleted profile still exists
-  - Comment creation is gated on active TinyPress profile presence,
-    not merely Internet Identity authentication
-  - Title-only posts are allowed in the frontend, matching ADR/spec
-  - deletedProfileId is cleared on signed-out/no-session reset so stale
-    orphaned posts do not reappear after sign-out/sign-back-in flows
-  - Browser behaviour was manually observed as working; code/build audit
-    confirmed App.tsx-only frontend changes, no Rust/DID drift, and a
-    successful frontend build, but did not independently reproduce live UI interaction
-  - Stage 6 remains the hard gate before any MKTd03 integration work begins
+## CURRENT STATUS
 
-OPEN QUESTIONS (not yet resolved)
-  - StoredCommentCodec derives CandidType unnecessarily — harmless, park for cleanup pass
-  - cargo-audit not installed (WARN on deploy) — install when convenient
-  - dfx.json candid metadata warning still present — dfx.json needs metadata block
-  - claude.md should be renamed to CLAUDE.md (minor)
-  - Playbook updates still pending: .did-before-testing sequencing (§8.1 extension);
-    LazyEntry API lesson (verify iterator API against installed crate version)
+TinyPress is now operating as its own standalone repo with:
+- public-facing repo guidance narrowed and updated
+- TinyPress ADR restored to the TinyPress repo
+- Stage 5 pass 2B frontend work already landed on `main`
 
-KNOWN GOTCHAS FOR NEXT SESSION
-  - Git repo (MKTd03) is in WSL at /home/stef_savanah/projects/MKTd03
-  - Git repo (TinyPress) is in WSL at /home/stef_savanah/projects/TinyPress
-  - Git repo (standards) is in WSL at /home/stef_savanah/projects/TAV-Engineering-Standards
-  - Windows working folder: C:\Users\Stef\Dropbox\Van Haas\Bonded\Patents\Zombie Delete\MKTd03
-  - WSL Dropbox path: "/mnt/c/Users/Stef/Dropbox/Van Haas/Bonded/Patents/Zombie Delete/MKTd03"
-  - Always delete old file from Dropbox MKTd03 folder BEFORE downloading new version
-  - Always verify with sed -n 'Np' to confirm new file landed before running cp
-  - Always verify filename has no (1) or (2) suffix before running cp
-  - Always use full SHA (git rev-parse HEAD) in this file — not short hash
-  - Always verify branch after push: git log --oneline -3 origin/main
-  - Kill daffydefs replica before starting MKTd03 sessions:
-      pkill -9 -f '/home/stef_savanah/projects/daffydefs/.dfx/network/local'
-      pkill -9 -f '/home/stef_savanah/.cache/dfinity/versions/0.24.3/pocket-ic'
-      pkill -9 -f '/home/stef_savanah/.cache/dfinity/versions/0.24.3/replica'
-      pkill -9 -f '/home/stef_savanah/.cache/dfinity/versions/0.24.3/ic-https-outcalls-adapter'
-  - StableBTreeMap::range() yields LazyEntry in 0.7.2 — use entry.key().clone(), not tuple destructure
-  - Interface file must be updated before acceptance testing — dfx produces misleading
-    type errors (not logic errors) when .did is stale
-  - Frontend declarations under src/frontend/src/declarations/tinypress must be
-    regenerated with dfx generate tinypress whenever tinypress.did changes
-  - Canonical local recovery loop after any dfx start --clean:
-      dfx start --clean --background
-      dfx deploy internet_identity
-      dfx deploy tinypress
-      dfx generate tinypress
-      rewrite src/frontend/.env with VITE_DFX_NETWORK=local plus fresh
-      VITE_INTERNET_IDENTITY_CANISTER_ID and VITE_TINYPRESS_CANISTER_ID
-      npm --prefix src/frontend run build
-      dfx deploy tinypress_frontend
-  - Local Internet Identity uses the README-pinned dev release
-    release-2025-04-04-v3 in dfx.json
-  - Local Internet Identity provider URL must use the subdomain form with
-    ?raw=true:
-    http://<internet_identity_canister_id>.localhost:4943/?raw=true
-  - dfx deploy does not accept multiple canister names in one command for
-    this setup
-  - stef-mvp identity is encrypted — will fail in non-interactive/bash contexts
-  - Commit message exclamation marks trigger bash history expansion in WSL —
-    use single quotes around commit message or avoid ! in messages
-  - TinyPress memory IDs 0..10 all in use — any new stable structures start at MemoryId(11)
-  - Orphaned-post visibility after profile deletion is session-local in the
-    current demo flow because deletedProfileId is held in component state
-  - Comments remain visible after profile deletion for the currently selected
-    post because selectedPostId remains in component state
-  - Feed scope is still author-scoped only; no broader discovery/feed work has
-    been added in Stage 5 pass 2B
+Current repo state:
+- TinyPress `main` @ `0e2fe2c` — `docs: add repo guidance and restore TinyPress ADR`
 
-ACCEPTANCE GATES (Stage 5 / Stage 6)
-  [x] Assumption surfacing check completed before any implementation prompt
-  [x] Frontend stack decided and ADR drafted before any code written
-  [x] Stage 5 pass 1 complete: frontend scaffold + local Internet Identity support
-  [x] Stage 5 pass 2A complete: profile create / view / delete working in UI
-  [x] Stage 5 pass 2B complete: post create / view working in UI
-  [x] Stage 5 pass 2B complete: comment create / view working in UI
-  [x] Stage 5 pass 2B complete: orphaned records state visible after profile deletion
-  [ ] Deployable to mainnet
-  [ ] Suitable for third-party demo without CLI knowledge
-  [ ] RESTART_PACK and MILESTONE_LOG updated in GitHub before session closes
-  [ ] Stage 6 (playbook update) explicitly queued — do not proceed to MKTd03
-      integration until Stage 6 is complete
+Related adjacent repo state:
+- MKTd03 `main` @ `0e3ef37` — `docs: narrow repo guidance and remove TinyPress ADR`
 
-SAFE RESTART PROMPT
-  Fetch https://raw.githubusercontent.com/Together-Alone-Ventures/TinyPress/main/RESTART_PACK.md
-  and confirm your understanding of the current state before we proceed.
-  Context if needed: We are building MKTd03 — a zombie-delete / GDPR tombstoning
-  protocol on ICP. The toy dApp is TinyPress, a Nuance-inspired single-canister
-  publishing app. TinyPress canister v1 is feature-complete. Stage 5 pass 2B
-  is complete: the frontend now supports sign in, profile create / view /
-  delete, post create, post list/view by author, comment create on selected
-  post, comment list by post, and visibility of surviving orphaned posts /
-  comments after profile deletion. Browser behaviour was manually observed as
-  working; tool audit confirmed code shape and successful build but did not
-  independently reproduce live UI interaction. Next task is Stage 6: update the
-  playbook and TAV Design Principles materials. Do not begin MKTd03 integration
-  until Stage 6 is complete.
-  TinyPress repo: Together-Alone-Ventures/TinyPress on GitHub, main branch.
-  MKTd03 repo: Together-Alone-Ventures/MKTd03 on GitHub, main branch.
+## RECENT CLEANUP COMPLETED
+
+- Moved `TinyPress_ADR_v1.1.docx` from MKTd03 into `TinyPress/docs/adr/`
+- Replaced duplicated mixed-scope `CLAUDE.md` content with a concise TinyPress-local repo guidance file
+- Confirmed local `.env` remains untracked
+- Confirmed generated frontend artifacts reviewed during cleanup were not tracked repo content
+
+## TINY PRESS BOUNDARY RULES
+
+TinyPress should remain:
+- a standalone application repo
+- focused on TinyPress code, app architecture, ADRs, and local operating notes
+- documented in application-specific terms
+
+TinyPress docs should not become a storage location for:
+- generic MKTd03 protocol documentation
+- generic CVDR product-family framing
+- cross-product commercial positioning
+- reusable standards material better housed in TAV-Engineering-Standards
+
+## WORKING METHOD
+
+When performing further cleanup or doc updates:
+1. inspect current repo contents first
+2. classify before moving or rewriting
+3. keep TinyPress-local docs in TinyPress
+4. keep protocol/product-family material out of TinyPress unless clearly example-only
+5. use tightly bounded edits and review diffs before commit
+
+## KEY FILES
+
+- `CLAUDE.md` — repo-local guidance
+- `RESTART_PACK.md` — current continuity state
+- `MILESTONE_LOG.md` — TinyPress historical progress log
+- `docs/adr/TinyPress_ADR_v1.1.docx` — TinyPress architecture reference
+
+## NEXT LIKELY TASKS
+
+Choose deliberately from the following:
+- continue TinyPress-local documentation cleanup if further drift is found
+- resume TinyPress implementation work from the current Stage 5 / Stage 6 checkpoint
+- separately plan any standards extraction into TAV-Engineering-Standards without bloating this repo
+
+## SAFE RESTART PROMPT
+
+If resuming in a new chat, paste:
+
+> TinyPress is now a standalone repo and must remain app-local in scope.  
+> Current TinyPress main is at commit `0e2fe2c`; adjacent MKTd03 main is at `0e3ef37`.  
+> Repo-boundary cleanup already completed: TinyPress ADR restored to TinyPress; public-facing repo guidance narrowed in both repos.  
+> Use `RESTART_PACK.md`, `MILESTONE_LOG.md`, and `CLAUDE.md` first.  
+> Keep TinyPress documentation application-specific and avoid reintroducing generic MKTd03/CVDR material into this repo.
